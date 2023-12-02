@@ -23,7 +23,7 @@ def prefer_far_exit_following_the_cliff() -> Parameters:
 
 def prefer_far_exit_avoiding_the_cliff() -> Parameters:
     # Préférer la sortie distante (+10) en évitant la falaise.
-    reward_live, gamma, noise = 0.9, 0.5, 0.5
+    reward_live, gamma, noise = 0.5, 0.5, 0.5 
     return Parameters(reward_live, gamma, noise)
 
 def never_end_the_game() -> Parameters:
