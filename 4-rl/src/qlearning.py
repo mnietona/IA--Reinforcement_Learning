@@ -3,57 +3,72 @@ import numpy as np
 import random
 
 class QLearning:
+    """ Q-Learning Tabular """
+    
     def __init__(self, alpha=0.1, gamma=0.9, epsilon=0.1, n_actions=5):
-        self.q_table = {}  # Dictionnaire pour les valeurs Q
-        self.alpha = alpha
-        self.gamma = gamma
-        self.epsilon = epsilon  # Taux d'exploration
-        self.n_actions = n_actions
+        self.q_table = {}          # Dictionnaire des Q-valeurs
+        self.alpha = alpha         # Taux d'apprentissage
+        self.gamma = gamma         # Facteur de remise
+        self.epsilon = epsilon     # Facteur d'exploration
+        self.n_actions = n_actions # Nombre d'actions possibles
 
-    def choose_action(self, observation: Observation):
-        state = observation.state
-        state_key = self._get_state_key(state)
+    def choose_action(self, observation: Observation) -> int:
+        """ Choix d'une action """
+        state_key = self._get_state_key(observation.state)
+        self._initialize_state(state_key)
 
-        # On suppose que `available_actions` est un tableau binaire de la forme (n_actions,)
-        # où 1 indique que l'action est disponible et 0 sinon.
-        available_actions = observation.available_actions[0]
-        available_actions_indices = np.where(available_actions > 0)[0]
-
-        if state_key not in self.q_table:
-            # Initialiser avec des valeurs de 1 pour encourager l'exploration
-            self.q_table[state_key] = np.ones(self.n_actions)
-
-        if random.uniform(0, 1) < self.epsilon:  # Exploration
-            action = np.random.choice(available_actions_indices)
-        else:  # Exploitation
-            q_values = self.q_table[state_key][available_actions_indices]
-            best_action_index = np.argmax(q_values)
-            action = available_actions_indices[best_action_index]
-
-        return action
+        if self._should_explore():
+            return self._explore(observation)
+        else:
+            return self._exploit(state_key, observation)
 
     def update(self, observation, action, reward, next_observation):
-        state = observation.state
-        next_state = next_observation.state
+        """ Mise à jour de la table Q"""
+        state_key = self._get_state_key(observation.state)
+        next_state_key = self._get_state_key(next_observation.state)
+        self._initialize_state(next_state_key)
 
-        state_key = self._get_state_key(state)
-        next_state_key = self._get_state_key(next_state)
-
-        if next_state_key not in self.q_table:
-            self.q_table[next_state_key] = np.ones(self.n_actions)
-
-        # Mise à jour de Q
         old_value = self.q_table[state_key][action]
         next_max = np.max(self.q_table[next_state_key])
-        new_value = (1 - self.alpha) * old_value + self.alpha * (reward + self.gamma * next_max)
+        self.q_table[state_key][action] = self._calculate_new_value(old_value, reward, next_max)
 
-        self.q_table[state_key][action] = new_value
+    def _should_explore(self): 
+        """ Vérifie si l'agent doit explorer """
+        return random.uniform(0, 1) < self.epsilon
 
-    def _get_state_key(self, state):
-        """ Génère une clé unique pour l'état donné pour être utilisée dans la table Q. """
+    def _explore(self, observation) -> int:
+        """ Explore en utilisant greedy-epsilon """
+        available_actions_indices = self._get_available_actions_indices(observation)
+        return np.random.choice(available_actions_indices)
+
+    def _exploit(self, state_key, observation) -> int :
+        """ Exploite en choisissant la meilleure action """
+        
+        available_actions_indices = self._get_available_actions_indices(observation)
+        q_values = self.q_table[state_key][available_actions_indices]
+        best_action_index = np.argmax(q_values)
+        return available_actions_indices[best_action_index]
+
+    def _get_state_key(self, state) -> int:
+        """ Retourne la clé de l'état """
         return hash(state.tobytes())
 
+    def _initialize_state(self, state_key):
+        """ Initialise l'état dans la table Q """
+        if state_key not in self.q_table:
+            self.q_table[state_key] = np.ones(self.n_actions)
+
+    def _get_available_actions_indices(self, observation) -> np.array:
+        """ Retourne les indices des actions disponibles """
+        available_actions = observation.available_actions[0]
+        return np.where(available_actions > 0)[0]
+
+    def _calculate_new_value(self, old_value, reward, next_max) -> float:
+        """ Calcule la nouvelle valeur Q avec la formule de Bellman """
+        return (1 - self.alpha) * old_value + self.alpha * (reward + self.gamma * next_max)
+
     def print_q_table(self):
+        """ Print the Q-table. """
         for state_key, values in self.q_table.items():
             print(f"State {state_key}: {values}")
         print(f"Q-table size: {len(self.q_table)}")
