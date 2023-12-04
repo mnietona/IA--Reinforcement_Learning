@@ -5,12 +5,13 @@ import random
 class QLearning:
     """ Q-Learning Tabular """
     
-    def __init__(self, alpha=0.1, gamma=0.9, epsilon=0.1, n_actions=5):
+    def __init__(self,id, alpha=0.1, gamma=0.9, epsilon=0.1, n_actions=5):
         self.q_table = {}          # Dictionnaire des Q-valeurs
         self.alpha = alpha         # Taux d'apprentissage
         self.gamma = gamma         # Facteur de remise
         self.epsilon = epsilon     # Facteur d'exploration
         self.n_actions = n_actions # Nombre d'actions possibles
+        self.id = id
 
     def choose_action(self, observation: Observation) -> int:
         """ Choix d'une action """
@@ -60,15 +61,9 @@ class QLearning:
 
     def _get_available_actions_indices(self, observation) -> np.array:
         """ Retourne les indices des actions disponibles """
-        available_actions = observation.available_actions[0]
+        available_actions = observation.available_actions[self.id]
         return np.where(available_actions > 0)[0]
 
     def _calculate_new_value(self, old_value, reward, next_max) -> float:
         """ Calcule la nouvelle valeur Q avec la formule de Bellman """
         return (1 - self.alpha) * old_value + self.alpha * (reward + self.gamma * next_max)
-
-    def print_q_table(self):
-        """ Print the Q-table. """
-        for state_key, values in self.q_table.items():
-            print(f"State {state_key}: {values}")
-        print(f"Q-table size: {len(self.q_table)}")

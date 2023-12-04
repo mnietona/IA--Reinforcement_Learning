@@ -19,7 +19,6 @@ def train_agents_on_level(env, agents, episodes=5000):
 
         while not (done or truncated):
             actions = [agent.choose_action(observation) for agent in agents]
-            print(f'actions: {actions}')
             next_observation, reward, done, truncated, info = env.step(actions)
 
             for agent in agents:
@@ -35,7 +34,7 @@ def train_agents_on_level(env, agents, episodes=5000):
         for agent in agents:
             agent.epsilon = epsilon
         
-        print(f"Episode: {_} - Score: {score}")
+        #print(f"Episode: {_} - Score: {score}")
 
     average_score = sum(scores) / len(scores)
     print(f"Score moyen sur {episodes} épisodes: {average_score}")
@@ -98,7 +97,7 @@ def visualize_actions(level_file: str, l_actions: list[list[int]]):
 
 if __name__ == "__main__":
     
-    level = 3
+    level = 6
     
     if level == 1:
         level_name = "level1"
@@ -107,8 +106,8 @@ if __name__ == "__main__":
     elif level == 6:
         level_name = "level6"
         
-    env = TimeLimit(LLE.level(level), 80)
-    agents = [QLearning(alpha=0.1, gamma=0.9, epsilon=1.0) for _ in range(env.n_agents)]
+    env = TimeLimit(LLE.level(level), 100)
+    agents = [QLearning(id, alpha=0.1, gamma=0.9, epsilon=1.0) for id in range(env.n_agents)]
     average_score = train_agents_on_level(env, agents)
     
     l_actions, total_score, total_gems = execute_actions(env, agents, epsilon=0)
