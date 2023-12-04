@@ -1,52 +1,36 @@
-from lle import LLE , Action, World# Assurez-vous que cela pointe vers votre implémentation de l'environnement LLE
+from lle import LLE
 from rlenv.wrappers import TimeLimit
-from qlearning import QLearning  # Assurez-vous que cela pointe vers votre implémentation de QLearning
+from qlearning import QLearning 
 
+alpha = 0.1    
+gamma = 0.9    
+epsilon = 0.3
+episodes = 10
 
-# Paramètres pour l'agent Q-learning
-alpha = 0.1   # Learning rate
-gamma = 0.9   # Discount factor
-epsilon = 0.4 # Exploration rate
+env = TimeLimit(LLE.level(1), 5) 
 
-# Créer une instance temporaire de LLE pour obtenir les dimensions
-temp_env = LLE.level(1)
-max_time_steps = temp_env.width * temp_env.height
-print(f"Nombre maximal d'étapes: {max_time_steps}")
+Action = ["NORTH (UP)", "SOUTH (DOWN)", "EAST (RIGHT)","WEST (LEFT)", "STAY"]
 
-env = TimeLimit(LLE.level(1), max_time_steps)  # Remplacer LLE.level(1) par votre environnement spécifique
-
-# Création des agents
-agents = [QLearning(env, alpha, gamma, epsilon) for _ in range(env.n_agents)]
-# Boucle d'entraînement
+agents = [QLearning(alpha, gamma, epsilon) for _ in range(env.n_agents)]
+# Entrainment
+print("Entrainement")
 observation = env.reset()
 done = truncated = False
 score = 0
-while not (done or truncated):
-    available_actions = env.available_actions()  # Tableau binaire des actions disponibles
-    action_values = []
-    for idx, agent in enumerate(agents):
-        # Filtrer les actions disponibles pour cet agent
-        agent_available_actions = [i for i, available in enumerate(available_actions[idx]) if available]
+
+for episode in range(episodes):
+    while not done :
+        actions = [a.choose_action(observation) for a in agents]
+        print(f"Actions : {Action[actions[0]]}")
+        next_observation, reward, done, truncated, info = env.step(actions)
+        print(f"Reward: {reward}, info: {info}, dones: {done}, truncated: {truncated}")
+
+        for a in agents:
+            a.update(observation, actions, reward, next_observation)
         
-        # Choisir une action parmi les actions disponibles
-        action_index = agent.choose_action(observation, agent_available_actions)
-        
-        # Convertir l'indice d'action en valeur entière de l'objet Action correspondant
-        action = Action(action_index).value
-        action_values.append(action)
+        observation = next_observation
+        score += reward
     
-    # Appeler step avec les valeurs entières des actions
-    next_observation, reward, done, truncated, info = env.step(action_values)
-    
-    # Mise à jour de chaque agent
-    for agent in agents:
-        agent.update(observation, action, reward, next_observation)
+    print(f"Episode {episode} - Score: {score}")
 
-    # Mise à jour du score et de l'observation
-    score += reward
-    observation = next_observation
-    
-
-
-
-
+agents[0].print_q_table()

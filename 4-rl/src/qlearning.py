@@ -1,72 +1,60 @@
 from rlenv import RLEnv, Observation
 import numpy as np
 import numpy.typing as npt
-import pandas as pd
+import random
 
 class QLearning:
-    """Tabular QLearning avec un dictionnaire pour les valeurs Q."""
-    def __init__(self, env: RLEnv, alpha: float, gamma: float, epsilon: float):
-        self.env = env
+
+    def __init__(self, alpha=0.1, gamma=0.9, epsilon=0.1, n_actions=5):
+        self.q_table = {}  # Dictionnaire pour les valeurs Q
         self.alpha = alpha
         self.gamma = gamma
-        self.epsilon = epsilon
-        # Utilisation d'un dictionnaire pour stocker les valeurs Q.
-        self.Q = {}
+        self.epsilon = epsilon  # Taux d'exploration
+        self.n_actions = n_actions
 
-    def get_q_value(self, state, action):
-        """Retourne la valeur Q pour un état et une action donnés."""
-        # Hashage de l'état si c'est un tableau numpy.
-        state_hash = hash(state.tobytes()) if isinstance(state, np.ndarray) else state
-        return self.Q.get((state_hash, action), 1)  # Initialisation à 1 pour encourager l'exploration.
+    def choose_action(self, observation: Observation):
+        state = observation.state
+        state_key = hash(state.tobytes())
 
-    def set_q_value(self, state, action, value):
-        """Définit la valeur Q pour un état et une action donnés."""
-        state_hash = hash(state.tobytes()) if isinstance(state, np.ndarray) else state
-        self.Q[(state_hash, action)] = value
+        available_actions = observation.available_actions[0]
+        available_actions_indices = np.where(available_actions > 0)[0]
 
-    
-    def choose_action(self, state, available_actions) -> int:
-        """Choisit une action basée sur la stratégie ε-greedy."""
-        if np.random.random() < self.epsilon:
-            return np.random.choice(available_actions)
-        else:
-            q_values = {a: self.get_q_value(state, a) for a in available_actions}
-            return max(q_values, key=q_values.get)
+        if state_key not in self.q_table:
+            self.q_table[state_key] = np.ones(self.n_actions)
 
-    
-    def update(self, state, action, reward, next_state) -> None:
-        """Met à jour la valeur Q pour un état et une action donnés."""
-        # Obtenir la meilleure valeur Q pour le prochain état.
-        max_next_q = max([self.get_q_value(next_state, a) for a in range(self.env.n_actions)])
-        # Calculer la nouvelle valeur Q.
-        new_q = (1 - self.alpha) * self.get_q_value(state, action) + self.alpha * (reward + self.gamma * max_next_q)
-        # Mettre à jour la valeur Q.
-        self.set_q_value(state, action, new_q)
-    
-    # Methode qui affcihe les valeur de Q de chaque action a chaque state 
+        if random.uniform(0, 1) < self.epsilon:  # Exploration
+            action = np.random.choice(available_actions_indices)
+            return action
+        else:  # Exploitation
+            q_values = self.q_table[state_key]
+            q_values_filtered = q_values[available_actions_indices]
+            best_action_index = np.argmax(q_values_filtered)
+            return available_actions_indices[best_action_index]
+
+    def update(self, observation, action, reward, next_observation):
+        state = observation.state
+        next_state = next_observation.state
+
+        state_key = hash(state.tobytes())
+        next_state_key = hash(next_state.tobytes())
+
+        if next_state_key not in self.q_table:
+            self.q_table[next_state_key] = np.ones(self.n_actions)
+
+        # Update Q 
+        current_q = self.q_table[state_key]
+        next_q = self.q_table[next_state_key]
+        old_value = current_q[action]
+        next_max = np.max(next_q)
+        print(f"old_value: {old_value}, next_max: {next_max}, reward: {reward}")
+        new_value = (1 - self.alpha) * old_value + self.alpha * (reward + self.gamma * next_max)
+
+        current_q[action] = new_value
+        self.q_table[state_key] = current_q
 
 
-    def display_q_values(self):
-        """Organise et affiche les valeurs Q dans un DataFrame pandas."""
-        # Préparer les données pour le DataFrame
-        data = {}
-        for (state_hash, action), value in self.Q.items():
-            if state_hash not in data:
-                data[state_hash] = {}
-            data[state_hash][action] = value
+    def print_q_table(self):
+        for state_key in self.q_table:
+            print(f"State {state_key}: {self.q_table[state_key]}")
         
-        # Créer le DataFrame
-        df = pd.DataFrame(data).T  # .T pour transposer le DataFrame
-
-        # Trier les colonnes (actions) dans l'ordre souhaité
-        sorted_columns = sorted(df.columns)
-        df = df[sorted_columns]
-
-        df.fillna(0, inplace=True)  # Remplacer les NaN par 0
-
-        # Afficher le DataFrame
-        print(df)
-
-        
-
-
+        print(f"Q-table size: {len(self.q_table)}")

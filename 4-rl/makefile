@@ -1,7 +1,6 @@
 # Variables pour les commandes fréquemment utilisées
 PYTHON = python3
 
-
 all: main
 
 main:
