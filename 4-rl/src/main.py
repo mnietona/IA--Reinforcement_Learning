@@ -1,10 +1,38 @@
 from lle import LLE, World, Action
 from rlenv.wrappers import TimeLimit
 from qlearning import QLearning 
+from approximate_qlearning import ApproximateQLearning
 import cv2
+import matplotlib.pyplot as plt
+import numpy as np
+
+def plot_scores(scores, window_size=100):
+    # Convertir la liste de listes en tableau numpy pour faciliter les calculs
+    scores_array = np.array(scores)
+    episodes = np.arange(scores_array.shape[1])
+    
+    # Calcul de la moyenne et de la déviation standard pour chaque épisode
+    mean_scores = np.mean(scores_array, axis=0)
+    std_scores = np.std(scores_array, axis=0)
+    # Calcul de la moyenne mobile sur les scores moyens
+    moving_average = np.convolve(mean_scores, np.ones(window_size)/window_size, mode='valid')
+
+    plt.figure(figsize=(10, 6))
+    plt.scatter(episodes, mean_scores, label='Score Moyen par Épisode', alpha=0.4)
+    plt.plot(episodes[window_size - 1:], moving_average, label='Moyenne Mobile', color='orange', linewidth=2)
+    
+    # Ajouter la déviation standard
+    plt.fill_between(episodes, mean_scores - std_scores, mean_scores + std_scores, color='blue' , alpha=0.2)
+
+    plt.title("Évolution du Score au Cours des Épisodes")
+    plt.xlabel("Épisodes")
+    plt.ylabel("Score")
+    plt.legend()
+    plt.grid(True)
+    plt.show()
 
 
-def train_agents_on_level(env, agents, episodes=5000):
+def train_agents_on_level(env, agents, episodes=1000):
     """ Entraîne les agents sur un niveau """
     epsilon = 1.0  # Commence avec une exploration complète
     epsilon_min = 0.1  # Valeur minimale pour epsilon
@@ -38,7 +66,7 @@ def train_agents_on_level(env, agents, episodes=5000):
 
     average_score = sum(scores) / len(scores)
     print(f"Score moyen sur {episodes} épisodes: {average_score}")
-    return average_score
+    return average_score, scores
 
 def execute_actions(env, agents, epsilon = 0):
     observation = env.reset()
@@ -97,7 +125,7 @@ def visualize_actions(level_file: str, l_actions: list[list[int]]):
 
 if __name__ == "__main__":
     
-    level = 6
+    level = 1
     
     if level == 1:
         level_name = "level1"
@@ -105,11 +133,18 @@ if __name__ == "__main__":
         level_name = "level3"
     elif level == 6:
         level_name = "level6"
-        
-    env = TimeLimit(LLE.level(level), 100)
-    agents = [QLearning(id, alpha=0.1, gamma=0.9, epsilon=1.0) for id in range(env.n_agents)]
-    average_score = train_agents_on_level(env, agents)
     
+    env = TimeLimit(LLE.level(level), 80)
+    #agents = [QLearning(id, alpha=0.1, gamma=0.9, epsilon=1.0) for id in range(env.n_agents)]
+    agents =  [ApproximateQLearning(id, alpha=0.1, gamma=0.9, epsilon=1.0, n_actions=5, n_features=4) for id in range(env.n_agents)]
+    print("Entraînement des agents...")
+    score = []
+    for entrainement in range(10):
+        average_score, scores = train_agents_on_level(env, agents)
+        score.append(scores)
+        print(f"Entraînement {entrainement} terminé!")
+    print("Entraînement terminé!")
+    plot_scores(score)
     l_actions, total_score, total_gems = execute_actions(env, agents, epsilon=0)
-    visualize_actions(level_name, l_actions)
+    #visualize_actions(level_name, l_actions)
 
