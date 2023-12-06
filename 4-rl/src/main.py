@@ -14,25 +14,28 @@ def plot_scores(scores, window_size=100):
     # Calcul de la moyenne et de la déviation standard pour chaque épisode
     mean_scores = np.mean(scores_array, axis=0)
     std_scores = np.std(scores_array, axis=0)
-    # Calcul de la moyenne mobile sur les scores moyens
-    moving_average = np.convolve(mean_scores, np.ones(window_size)/window_size, mode='valid')
 
-    plt.figure(figsize=(10, 6))
-    plt.scatter(episodes, mean_scores, label='Score Moyen par Épisode', alpha=0.4)
-    plt.plot(episodes[window_size - 1:], moving_average, label='Moyenne Mobile', color='orange', linewidth=2)
+    # Calcul de la moyenne et de la déviation standard sur la fenêtre glissante
+    mean_scores_window = np.convolve(mean_scores, np.ones(window_size)/window_size, mode='valid')
+    std_scores_window = np.convolve(std_scores, np.ones(window_size)/window_size, mode='valid')
+
+    # Tracer le graphique
+    plt.figure(figsize=(12, 6))
+    plt.plot(episodes[:len(mean_scores_window)], mean_scores_window, label='Moyenne des scores')
+    plt.fill_between(episodes[:len(mean_scores_window)], 
+                     mean_scores_window - std_scores_window, 
+                     mean_scores_window + std_scores_window, 
+                     color='gray', alpha=0.2, label='Déviation standard')
     
-    # Ajouter la déviation standard
-    plt.fill_between(episodes, mean_scores - std_scores, mean_scores + std_scores, color='blue' , alpha=0.2)
-
-    plt.title("Évolution du Score au Cours des Épisodes")
-    plt.xlabel("Épisodes")
-    plt.ylabel("Score")
+    plt.title('Score Moyen par Épisode level1')
+    plt.xlabel('Épisodes')
+    plt.ylabel('Score Moyen')
     plt.legend()
-    plt.grid(True)
+    plt.grid()
     plt.show()
 
 
-def train_agents_on_level(env, agents, episodes=1000):
+def train_agents_on_level(env, agents, episodes=500):
     """ Entraîne les agents sur un niveau """
     epsilon = 1.0  # Commence avec une exploration complète
     epsilon_min = 0.1  # Valeur minimale pour epsilon
@@ -47,7 +50,7 @@ def train_agents_on_level(env, agents, episodes=1000):
 
         while not (done or truncated):
             actions = [agent.choose_action(observation) for agent in agents]
-            next_observation, reward, done, truncated, info = env.step(actions)
+            next_observation, reward, done, truncated, _ = env.step(actions)
 
             for agent in agents:
                 agent.update(observation, actions, reward, next_observation)
@@ -86,6 +89,7 @@ def execute_actions(env, agents, epsilon = 0):
         observation = next_observation
         score += reward
         step += 1
+        print(f"Step {step} - Score: {score}")
     
     gems = info['gems_collected']
     print(f"Step {step} - Score: {score}, Gems: {gems}")
@@ -134,17 +138,18 @@ if __name__ == "__main__":
     elif level == 6:
         level_name = "level6"
     
+    
     env = TimeLimit(LLE.level(level), 80)
     #agents = [QLearning(id, alpha=0.1, gamma=0.9, epsilon=1.0) for id in range(env.n_agents)]
-    agents =  [ApproximateQLearning(id, alpha=0.1, gamma=0.9, epsilon=1.0, n_actions=5, n_features=4) for id in range(env.n_agents)]
-    print("Entraînement des agents...")
+    agents = [ApproximateQLearning(id, alpha=0.1, gamma=0.9, epsilon=1.0, n_actions=5, n_features=4) for id in range(env.n_agents)]
+    print("Entraînement des agents sur le {}...".format(level_name))
     score = []
-    for entrainement in range(10):
+    for entrainement in range(20):
         average_score, scores = train_agents_on_level(env, agents)
         score.append(scores)
         print(f"Entraînement {entrainement} terminé!")
     print("Entraînement terminé!")
     plot_scores(score)
-    l_actions, total_score, total_gems = execute_actions(env, agents, epsilon=0)
+    #l_actions, total_score, total_gems = execute_actions(env, agents, epsilon=0)
     #visualize_actions(level_name, l_actions)
 

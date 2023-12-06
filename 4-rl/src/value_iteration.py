@@ -45,6 +45,7 @@ class ValueIteration(Generic[S, A]):
 if __name__ == "__main__":
     from lle import World
     import matplotlib.pyplot as plt
+    import matplotlib.patches as mpatches
     import numpy as np
     import sys
     import os
@@ -139,8 +140,13 @@ if __name__ == "__main__":
         plt.gca().invert_yaxis()  # Inverser l'axe y pour l'affichage
         plt.xticks(range(w.width))
         plt.yticks(range(w.height))
+        red_patch = mpatches.Patch(color='red', label='Actions sans gemmes')
+        blue_patch = mpatches.Patch(color='blue', label='Actions avec gemmes')
+        # placer la légende en haut en dehors du graph 
+        plt.legend(handles=[red_patch, blue_patch], bbox_to_anchor=(0.5, 1.1), loc='upper center', ncol=2)
         plt.show()
-
+        
+    
     def execute_policy(mdp, value_iteration):
         mdp.world.reset()
         step = 0
