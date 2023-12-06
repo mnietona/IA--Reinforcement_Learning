@@ -35,7 +35,7 @@ def plot_scores(scores, window_size=100):
     plt.show()
 
 
-def train_agents_on_level(env, agents, episodes=500):
+def train_agents_on_level(env, agents, episodes=100):
     """ Entraîne les agents sur un niveau """
     epsilon = 1.0  # Commence avec une exploration complète
     epsilon_min = 0.1  # Valeur minimale pour epsilon
@@ -141,10 +141,10 @@ if __name__ == "__main__":
     
     env = TimeLimit(LLE.level(level), 80)
     #agents = [QLearning(id, alpha=0.1, gamma=0.9, epsilon=1.0) for id in range(env.n_agents)]
-    agents = [ApproximateQLearning(id, alpha=0.1, gamma=0.9, epsilon=1.0, n_actions=5, n_features=4) for id in range(env.n_agents)]
+    agents = [ApproximateQLearning(id, alpha=0.1, gamma=0.9, epsilon=1.0, n_actions=5, n_features=1) for id in range(env.n_agents)]
     print("Entraînement des agents sur le {}...".format(level_name))
     score = []
-    for entrainement in range(20):
+    for entrainement in range(1):
         average_score, scores = train_agents_on_level(env, agents)
         score.append(scores)
         print(f"Entraînement {entrainement} terminé!")

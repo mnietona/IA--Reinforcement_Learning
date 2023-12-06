@@ -61,34 +61,28 @@ def feature_extraction(world: World, agent_id) -> np.array:
     #closest_gem_distance = _find_closest_gem_distance(world)
     #laser_north = _is_laser_north(world)
     n_gems_not_collected = 0.0
-    closest_gem_distance = [0.0, 0.0]
-    laser_north = 0.0
 
-    return np.array([n_gems_not_collected, *closest_gem_distance, laser_north])
+    return np.array([n_gems_not_collected])
 
 
 class ApproximateQLearning(QLearning):
     def __init__(self, id, alpha=0.1, gamma=0.9, epsilon=0.1, n_actions=5, n_features=4):
         super().__init__(id, alpha, gamma, epsilon, n_actions)
-        # Initialisation aléatoire des poids pour chaque action
-        self.weights = np.random.randn(n_actions, n_features)  
-
-    def _get_q_values(self, features):
-        # Calcul des valeurs Q pour chaque action
-        return np.dot(features, self.weights.T) # Produit scalaire pour chaque action
-
-
+        self.weights = np.random.randn(n_actions, n_features) # Matrice des poids initialisée aléatoirement
+        
     def choose_action(self, observation):
+        """ Choix d'une action """
         state_features = feature_extraction(observation, self.id)
-        print(state_features)
         q_values = self._get_q_values(state_features)
-        print(q_values)
+
         if self._should_explore():
             return self._explore(observation)
         else:
-            return np.argmax(q_values)
+            return self._exploit(observation, q_values)
+            
 
     def update(self, observation, action, reward, next_observation):
+        """ Mise à jour des poids """
         state_features = feature_extraction(observation, self.id)
         next_state_features = feature_extraction(next_observation, self.id)
 
@@ -100,3 +94,15 @@ class ApproximateQLearning(QLearning):
         # Mise à jour des poids pour l'action spécifique
         for i in range(len(state_features)):
             self.weights[action, i] += self.alpha * td_error * state_features[i]
+
+    def _exploit(self, observation, q_values) -> int:
+        """ Exploite en choisissant la meilleure action """
+        available_actions_indices = self._get_available_actions_indices(observation)
+        q_values_available = q_values[available_actions_indices]
+        best_action_index = np.argmax(q_values_available)
+        return available_actions_indices[best_action_index]
+    
+    def _get_q_values(self, features):
+        """ Calcule les valeurs Q pour chaque action """
+        return np.dot(features, self.weights.T)
+
