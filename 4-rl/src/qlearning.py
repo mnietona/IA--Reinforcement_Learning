@@ -15,13 +15,11 @@ class QLearning:
 
     def choose_action(self, observation: Observation) -> int:
         """ Choix d'une action """
-        state_key = self._get_state_key(observation.state)
-        self._initialize_state(state_key)
-
+        
         if self._should_explore():
             return self._explore(observation)
         else:
-            return self._exploit(state_key, observation)
+            return self._exploit(observation)
 
     def update(self, observation, action, reward, next_observation):
         """ Mise à jour de la table Q"""
@@ -44,6 +42,8 @@ class QLearning:
 
     def _exploit(self, state_key, observation) -> int :
         """ Exploite en choisissant la meilleure action """
+        state_key = self._get_state_key(observation.state)
+        self._initialize_state(state_key)
         
         available_actions_indices = self._get_available_actions_indices(observation)
         q_values = self.q_table[state_key][available_actions_indices]

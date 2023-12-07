@@ -34,7 +34,6 @@ def plot_scores(scores, window_size=100):
     plt.grid()
     plt.show()
 
-
 def train_agents_on_level(env, agents, episodes=100):
     """ Entraîne les agents sur un niveau """
     epsilon = 1.0  # Commence avec une exploration complète
@@ -42,7 +41,6 @@ def train_agents_on_level(env, agents, episodes=100):
     epsilon_decay = 0.995  # Facteur de décroissance d'epsilon
 
     scores = []  # Pour suivre l'évolution du score
-
     for _ in range(episodes):
         observation = env.reset()
         done = truncated = False
@@ -50,8 +48,7 @@ def train_agents_on_level(env, agents, episodes=100):
 
         while not (done or truncated):
             actions = [agent.choose_action(observation) for agent in agents]
-            next_observation, reward, done, truncated, _ = env.step(actions)
-
+            next_observation, reward, done, truncated, info = env.step(actions)
             for agent in agents:
                 agent.update(observation, actions, reward, next_observation)
             
@@ -140,8 +137,9 @@ if __name__ == "__main__":
     
     
     env = TimeLimit(LLE.level(level), 80)
+   
     #agents = [QLearning(id, alpha=0.1, gamma=0.9, epsilon=1.0) for id in range(env.n_agents)]
-    agents = [ApproximateQLearning(id, alpha=0.1, gamma=0.9, epsilon=1.0, n_actions=5, n_features=1) for id in range(env.n_agents)]
+    agents = [ApproximateQLearning(id, alpha=0.1, gamma=0.9, epsilon=1.0, n_actions=5, n_features=4) for id in range(env.n_agents)]
     print("Entraînement des agents sur le {}...".format(level_name))
     score = []
     for entrainement in range(1):
@@ -149,7 +147,7 @@ if __name__ == "__main__":
         score.append(scores)
         print(f"Entraînement {entrainement} terminé!")
     print("Entraînement terminé!")
-    plot_scores(score)
+    #plot_scores(score)
     #l_actions, total_score, total_gems = execute_actions(env, agents, epsilon=0)
     #visualize_actions(level_name, l_actions)
 
