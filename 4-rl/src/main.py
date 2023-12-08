@@ -1,4 +1,4 @@
-from lle import LLE, World, Action
+from lle import LLE, World, Action, ObservationType
 from rlenv.wrappers import TimeLimit
 from qlearning import QLearning 
 from approximate_qlearning import ApproximateQLearning
@@ -34,7 +34,7 @@ def plot_scores(scores, window_size=100):
     plt.grid()
     plt.show()
 
-def train_agents_on_level(env, agents, episodes=100):
+def train_agents_on_level(env, agents, episodes=500):
     """ Entraîne les agents sur un niveau """
     epsilon = 1.0  # Commence avec une exploration complète
     epsilon_min = 0.1  # Valeur minimale pour epsilon
@@ -49,18 +49,19 @@ def train_agents_on_level(env, agents, episodes=100):
         while not (done or truncated):
             actions = [agent.choose_action(observation) for agent in agents]
             next_observation, reward, done, truncated, info = env.step(actions)
+            #print(agents[0].weights)
             for agent in agents:
                 agent.update(observation, actions, reward, next_observation)
-            
+            #print(agents[0].weights)
             observation = next_observation
             score += reward
 
         scores.append(score)
-        epsilon = max(epsilon_min, epsilon_decay * epsilon)  # Réduit epsilon
+        #epsilon = max(epsilon_min, epsilon_decay * epsilon)  # Réduit epsilon
 
         # Mise à jour des agents avec le nouvel epsilon
-        for agent in agents:
-            agent.epsilon = epsilon
+        #for agent in agents:
+            #agent.epsilon = epsilon
         
         #print(f"Episode: {_} - Score: {score}")
 
@@ -136,13 +137,12 @@ if __name__ == "__main__":
         level_name = "level6"
     
     
-    env = TimeLimit(LLE.level(level), 80)
-   
+    env = TimeLimit(LLE.level(level, ObservationType.LAYERED), 150)
     #agents = [QLearning(id, alpha=0.1, gamma=0.9, epsilon=1.0) for id in range(env.n_agents)]
-    agents = [ApproximateQLearning(id, alpha=0.1, gamma=0.9, epsilon=1.0, n_actions=5, n_features=4) for id in range(env.n_agents)]
+    agents = [ApproximateQLearning(id, alpha=0.1, gamma=0.7, epsilon=0.3, n_actions=5, n_features=3) for id in range(env.n_agents)]
     print("Entraînement des agents sur le {}...".format(level_name))
     score = []
-    for entrainement in range(1):
+    for entrainement in range(20):
         average_score, scores = train_agents_on_level(env, agents)
         score.append(scores)
         print(f"Entraînement {entrainement} terminé!")
