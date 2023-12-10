@@ -36,11 +36,7 @@ class ValueIteration(Generic[S, A]):
         for _ in range(n):
             for state in self.mdp.states():
                 self.values[state] = self._compute_value_from_qvalues(state)
-    
-    def optimal_policy(self) -> dict[S, A]:
-        """ Returns the optimal policy."""
-        return {state: self.policy(state) for state in self.mdp. states() if not self.mdp.is_final(state)}
-    
+
 
 if __name__ == "__main__":
     from lle import World
@@ -113,7 +109,7 @@ if __name__ == "__main__":
             y += offset[1]
 
             plt.arrow(x, y, dx, dy, head_width=head_w, head_length=head_l, fc=color, ec=color, lw=2)
-
+            
     def plot_policy_action(w, policy_grid_with_gems, policy_grid_without_gems):
         plt.figure(figsize=(5, 5))  # Ajustez la taille de la figure
 
@@ -141,12 +137,11 @@ if __name__ == "__main__":
         plt.xticks(range(w.width))
         plt.yticks(range(w.height))
         red_patch = mpatches.Patch(color='red', label='Actions sans gemmes')
-        blue_patch = mpatches.Patch(color='blue', label='Actions avec gemmes')
+        blue_patch = mpatches.Patch(color='blue', label='Actions si gemmes recoltées')
         # placer la légende en haut en dehors du graph 
         plt.legend(handles=[red_patch, blue_patch], bbox_to_anchor=(0.5, 1.1), loc='upper center', ncol=2)
         plt.show()
         
-    
     def execute_policy(mdp, value_iteration):
         mdp.world.reset()
         step = 0
@@ -163,7 +158,6 @@ if __name__ == "__main__":
     w = World.from_file("level1")
     
     value_iteration = ValueIteration(mdp, gamma=0.9)
-
     policy_iteration(value_iteration, 1000) 
     policy_grid_with_gems, policy_grid_without_gems = get_policy_grid(value_iteration, w)
     execute_policy(mdp, value_iteration)

@@ -15,18 +15,19 @@ class QLearning:
 
     def choose_action(self, observation: Observation) -> int:
         """ Choix d'une action """
+        state_key = self._get_state_key(observation.state)
+        self._initialize_state(state_key)
         
         if self._should_explore():
             return self._explore(observation)
         else:
-            return self._exploit(observation)
+            return self._exploit(state_key, observation)
 
-    def update(self, observation, action, reward, next_observation):
+    def update(self, observation, action, reward, next_observation,done):
         """ Mise à jour de la table Q"""
         state_key = self._get_state_key(observation.state)
         next_state_key = self._get_state_key(next_observation.state)
         self._initialize_state(next_state_key)
-
         old_value = self.q_table[state_key][action]
         next_max = np.max(self.q_table[next_state_key])
         self.q_table[state_key][action] = self._calculate_new_value(old_value, reward, next_max)
@@ -40,11 +41,8 @@ class QLearning:
         available_actions_indices = self._get_available_actions_indices(observation)
         return np.random.choice(available_actions_indices)
 
-    def _exploit(self, state_key, observation) -> int :
+    def _exploit(self,state_key, observation) -> int :
         """ Exploite en choisissant la meilleure action """
-        state_key = self._get_state_key(observation.state)
-        self._initialize_state(state_key)
-        
         available_actions_indices = self._get_available_actions_indices(observation)
         q_values = self.q_table[state_key][available_actions_indices]
         best_action_index = np.argmax(q_values)
@@ -67,3 +65,6 @@ class QLearning:
     def _calculate_new_value(self, old_value, reward, next_max) -> float:
         """ Calcule la nouvelle valeur Q avec la formule de Bellman """
         return (1 - self.alpha) * old_value + self.alpha * (reward + self.gamma * next_max)
+    
+
+
