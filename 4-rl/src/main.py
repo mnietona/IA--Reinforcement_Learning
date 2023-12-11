@@ -6,74 +6,35 @@ import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 
-def plot_scores(scores,level, window_size=100):
-    # Convertir la liste de listes en tableau numpy pour faciliter les calculs
-    scores_array = np.array(scores)
-    episodes = np.arange(scores_array.shape[1])
-    
-    # Calcul de la moyenne et de la déviation standard pour chaque épisode
-    mean_scores = np.mean(scores_array, axis=0)
-    std_scores = np.std(scores_array, axis=0)
 
-    # Calcul de la moyenne et de la déviation standard sur la fenêtre glissante
-    mean_scores_window = np.convolve(mean_scores, np.ones(window_size)/window_size, mode='valid')
-    std_scores_window = np.convolve(std_scores, np.ones(window_size)/window_size, mode='valid')
 
-    # Tracer le graphique
-    plt.figure(figsize=(12, 6))
-    plt.plot(episodes[:len(mean_scores_window)], mean_scores_window, label='Moyenne des scores')
-    plt.fill_between(episodes[:len(mean_scores_window)], 
-                     mean_scores_window - std_scores_window, 
-                     mean_scores_window + std_scores_window, 
-                     color='gray', alpha=0.2, label='Déviation standard')
-    
-    plt.title(f'Score Moyen par Épisode level {level}')
-    plt.xlabel('Épisodes')
-    plt.ylabel('Score Moyen')
-    plt.legend()
-    plt.grid()
-    plt.savefig(f"plot_level_{level}.png")
-    #plt.show()
+def train_agents(env, agents, n_episodes):
+    """ Entraîne les agents sur un nombre donné d'épisodes et renvoie les scores. """
 
-def train_agents_on_level(env, agents, episodes=200):
-    epsilon = 1.0  # Commence avec une exploration complète
-    epsilon_min = 0.1  # Valeur minimale pour epsilon
-    epsilon_decay = 0.995  # Facteur de décroissance d'epsilone
-   
     scores = []
-    for episode in range(episodes):
-        observation = env.reset()
-        done = truncated = False
-        score = 0
+    
+    for episode in range(n_episodes):
+        observation = env.reset()  
+        total_reward = 0
+        done, truncated = False, False
 
         while not (done or truncated):
-
             actions = [agent.choose_action(observation) for agent in agents]
-            
             next_observation, reward, done, truncated, info = env.step(actions)
 
             for agent in agents:
-                agent.update(observation, actions, reward, next_observation,done)
-                
+                agent.update(observation, actions, reward, next_observation, done)
+
+            total_reward += reward
             observation = next_observation
-            score += reward
 
-        scores.append(score)
-        
-        # #epsilon = max(epsilon_min, epsilon * epsilon_decay)
-        # average_score = sum(scores) / len(scores)
-        # for agent in agents:
-        #     #agent.epsilon = epsilon
-        #     agent.update_epsilon(episode, average_score)
+        scores.append(total_reward)
 
-
-        
-        #print(f"Episode: {_} - Score: {score} - epsilon: {epsilon}")
-
-    #print(f"epsilon: {epsilon}")
-    average_score = sum(scores) / len(scores)
-    print(f"Score moyen sur {episodes} épisodes: {average_score}")
-    return average_score, scores
+        for agent in agents:
+            agent.epsilon_decay(episode, n_episodes)
+            
+        print(f"Episode {episode} - Score: {total_reward}")
+    return scores
 
 def execute_actions(env, agents, epsilon = 0):
     observation = env.reset()
@@ -162,10 +123,35 @@ def scores_to_graph(level: int, scores: list[list[float]], args: tuple[float, fl
     plt.ylabel("Score")
     plt.legend()
     plt.show()
-    plt.savefig("file.png")
     plt.clf()
 
+def plot_scores(scores, window_size=100):
+    # Convertir la liste de listes en tableau numpy pour faciliter les calculs
+    scores_array = np.array(scores)
+    episodes = np.arange(scores_array.shape[1])
+    
+    # Calcul de la moyenne et de la déviation standard pour chaque épisode
+    mean_scores = np.mean(scores_array, axis=0)
+    std_scores = np.std(scores_array, axis=0)
 
+    # Calcul de la moyenne et de la déviation standard sur la fenêtre glissante
+    mean_scores_window = np.convolve(mean_scores, np.ones(window_size)/window_size, mode='valid')
+    std_scores_window = np.convolve(std_scores, np.ones(window_size)/window_size, mode='valid')
+
+    # Tracer le graphique
+    plt.figure(figsize=(12, 6))
+    plt.plot(episodes[:len(mean_scores_window)], mean_scores_window, label='Moyenne des scores')
+    plt.fill_between(episodes[:len(mean_scores_window)], 
+                     mean_scores_window - std_scores_window, 
+                     mean_scores_window + std_scores_window, 
+                     color='gray', alpha=0.2, label='Déviation standard')
+    
+    plt.title('Score Moyen par Épisode')
+    plt.xlabel('Épisodes')
+    plt.ylabel('Score Moyen')
+    plt.legend()
+    plt.grid()
+    plt.show()
 
 
 if __name__ == "__main__":
@@ -177,24 +163,33 @@ if __name__ == "__main__":
         level_name = "level3"
     elif level == 6:
         level_name = "level6"
-    
-    
+        
+    # Paramètres d'entraînement
+
+    n_episodes = 3000
+    n_trainings = 1
+    level_scores = []
+    # Entraînement
     env = TimeLimit(LLE.level(level, ObservationType.LAYERED), 80)
     
-    agents = [QLearning(id, alpha=0.1, gamma=0.9, epsilon=0.1) for id in range(env.n_agents)]
-    
-    #agents = [ApproximateQLearning(id, alpha=0.01, gamma=0.9 , epsilon=1.0, n_actions=5, n_features=9) for id in range(env.n_agents)]
-    
-    print(f'Entraînement sur le niveau {level_name} avec l\'algorithme {agents[0].__class__.__name__}')
-    score = []
-    for entrainement in range(100):
-        average_score, scores = train_agents_on_level(env, agents)
-        score.append(scores)
-        print(f"Entraînement {entrainement} terminé!")
+    print(f'Entraînement sur le niveau {level_name}')
+    for training in range(n_trainings):
+        agents = [QLearning(id, alpha=0.1, gamma=0.9, epsilon=1.0) for id in range(env.n_agents)]
+        agents = [ApproximateQLearning(id, n_features=15, alpha=0.01, gamma=0.9 , epsilon=1.0, n_actions=5) for id in range(env.n_agents)]
+        scores = train_agents(env, agents, n_episodes)
+        print(f"Score moyen: {np.mean(scores)} de {n_episodes} épisodes de l'entraînement {training} ")
+        level_scores.append(scores)
     print("Entraînement terminé!")
+    plot_scores(level_scores,level)
+    exit()
+    l_actions, total_score, total_gems = execute_actions(env, agents, epsilon=0)
+   
     
-    scores_to_graph(level, score, (0.1, 0.7, 0.1), min_val=0, max_val=3)
-    plot_scores(score,level)
-    #l_actions, total_score, total_gems = execute_actions(env, agents, epsilon=0)
-    #visualize_actions(level_name, l_actions)
+    
+    #scores_to_graph(level, level_scores, (0.1, 0.7, 0.1), min_val=0, max_val=3)
+    #
+    # l_actions, total_score, total_gems = execute_actions(env, agents, epsilon=0)
+    # visualize_actions(level_name, l_actions)
+    
+
 

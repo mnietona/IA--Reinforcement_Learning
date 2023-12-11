@@ -12,6 +12,20 @@ class QLearning:
         self.epsilon = epsilon     # Facteur d'exploration
         self.n_actions = n_actions # Nombre d'actions possibles
         self.id = id
+    
+    def _get_state_key(self, state) -> int:
+        """ Retourne la clé de l'état """
+        return hash(state.tobytes())
+
+    def _initialize_state(self, state_key):
+        """ Initialise l'état dans la table Q """
+        if state_key not in self.q_table:
+            self.q_table[state_key] = np.ones(self.n_actions)
+
+    def _get_available_actions_indices(self, observation) -> np.array:
+        """ Retourne les indices des actions disponibles """
+        available_actions = observation.available_actions[self.id]
+        return np.where(available_actions > 0)[0]
 
     def choose_action(self, observation: Observation) -> int:
         """ Choix d'une action """
@@ -25,14 +39,16 @@ class QLearning:
 
     def update(self, observation, action, reward, next_observation,done):
         """ Mise à jour de la table Q"""
-        state_key = self._get_state_key(observation.state)
+        state_key = self._get_state_key(observation.state)       
         next_state_key = self._get_state_key(next_observation.state)
         self._initialize_state(next_state_key)
+        
         old_value = self.q_table[state_key][action]
         next_max = np.max(self.q_table[next_state_key])
-        self.q_table[state_key][action] = self._calculate_new_value(old_value, reward, next_max)
+        
+        self.q_table[state_key][action] = self._calculate_new_value(old_value, reward, next_max, done)
 
-    def _should_explore(self): 
+    def _should_explore(self) -> bool: 
         """ Vérifie si l'agent doit explorer """
         return random.uniform(0, 1) < self.epsilon
 
@@ -48,23 +64,10 @@ class QLearning:
         best_action_index = np.argmax(q_values)
         return available_actions_indices[best_action_index]
 
-    def _get_state_key(self, state) -> int:
-        """ Retourne la clé de l'état """
-        return hash(state.tobytes())
-
-    def _initialize_state(self, state_key):
-        """ Initialise l'état dans la table Q """
-        if state_key not in self.q_table:
-            self.q_table[state_key] = np.ones(self.n_actions)
-
-    def _get_available_actions_indices(self, observation) -> np.array:
-        """ Retourne les indices des actions disponibles """
-        available_actions = observation.available_actions[self.id]
-        return np.where(available_actions > 0)[0]
-
-    def _calculate_new_value(self, old_value, reward, next_max) -> float:
+    def _calculate_new_value(self, old_value, reward, next_max, done) -> float:
         """ Calcule la nouvelle valeur Q avec la formule de Bellman """
-        return (1 - self.alpha) * old_value + self.alpha * (reward + self.gamma * next_max)
+        return (1 - self.alpha) * old_value + self.alpha * (reward + self.gamma * next_max * (1-done)) 
     
-
-
+    def epsilon_decay(self, episode, n_episodes):
+        """ Décroissance non linéaire de l'epsilon. """
+        self.epsilon = max(0.0, 1 / (1 + np.exp(0.001 * (episode - n_episodes /2 ))))

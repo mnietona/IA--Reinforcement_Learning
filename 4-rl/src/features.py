@@ -11,7 +11,7 @@ def feature_extraction(observation: Observation, agent_id: int) -> np.array:
     all_layers = observation.data[agent_id]
     
     # Extraire les positions
-    agent_pos, wall_positon, gem_positions, exit_pos, laser_positions = extract_all_position(all_layers, 
+    agent_pos, wall_positions, gem_positions, exit_pos, laser_positions = extract_all_position(all_layers, 
                                                                         agent_id, wall_layer_index, laser_layer_start,
                                                                         laser_layer_end, gem_layer_index, exit_layer_index)
     
@@ -21,8 +21,42 @@ def feature_extraction(observation: Observation, agent_id: int) -> np.array:
     row_dist_to_exit, col_dist_to_exit = calculate_min_distance(agent_pos, exit_pos)
     laser_north, laser_south, laser_east, laser_west = check_lasers_direction(agent_pos, laser_positions)
     
-    return np.array([n_gems_not_collected, min_row_dist, min_col_dist, row_dist_to_exit, col_dist_to_exit, laser_north, laser_south, laser_east, laser_west])
+    # Distance Euclidienne à la gemme et à la sortie
+    
+    
 
+    # Angle par rapport à la gemme et à la sortie
+    if n_gems_not_collected != 0:
+        angle_to_gem = np.arctan2(gem_positions[0][1] - agent_pos[1], gem_positions[0][0] - agent_pos[0])
+        euclidean_dist_to_gem = np.linalg.norm(np.array(agent_pos) - np.array(gem_positions[0]))
+        direct_line_of_sight_to_gem = check_direct_visibility(agent_pos, gem_positions[0], wall_positions)
+    else:
+        angle_to_gem = 0
+        direct_line_of_sight_to_gem = 0
+        euclidean_dist_to_gem = 0
+    euclidean_dist_to_exit = np.linalg.norm(np.array(agent_pos) - np.array(exit_pos[0]))
+    angle_to_exit = np.arctan2(exit_pos[0][1] - agent_pos[1], exit_pos[0][0] - agent_pos[0])
+    direct_line_of_sight_to_exit = check_direct_visibility(agent_pos, exit_pos[0], wall_positions)
+ 
+    return np.array([n_gems_not_collected, 
+                     min_row_dist, min_col_dist, 
+                     row_dist_to_exit, col_dist_to_exit, 
+                     laser_north, laser_south, laser_east, laser_west,
+                     euclidean_dist_to_gem,euclidean_dist_to_exit,
+                     angle_to_gem, angle_to_exit,
+                     direct_line_of_sight_to_gem,  direct_line_of_sight_to_exit
+    ])
+
+def check_direct_visibility(agent_pos, target_pos, wall_positions):
+    """ Vérifie s'il y a une ligne de vue directe entre l'agent et la cible (gemme ou sortie). """
+    # Un exemple simple qui vérifie si la ligne entre l'agent et la cible traverse un mur
+    # Cette logique doit être affinée pour tenir compte des murs entre l'agent et la cible
+    for wall in wall_positions:
+        if wall[0] == agent_pos[0] == target_pos[0] or wall[1] == agent_pos[1] == target_pos[1]:
+            if min(agent_pos[0], target_pos[0]) < wall[0] < max(agent_pos[0], target_pos[0]) or \
+               min(agent_pos[1], target_pos[1]) < wall[1] < max(agent_pos[1], target_pos[1]):
+                return 0
+    return 1
 
 def extract_all_position(all_layers, agent_id, wall_layer_index, laser_layer_start,
                          laser_layer_end, gem_layer_index, exit_layer_index):
@@ -32,6 +66,7 @@ def extract_all_position(all_layers, agent_id, wall_layer_index, laser_layer_sta
     gem_positions = extract_positions(all_layers[gem_layer_index], value=1)
     exit_positions = extract_positions(all_layers[exit_layer_index], value=1)
     laser_positions = extract_laser_positions(all_layers, laser_layer_start, laser_layer_end)
+    
     return agent_pos, wall_positon, gem_positions, exit_positions, laser_positions
      
 def calculate_layer_indices(observation: Observation, agent_id: int):
@@ -90,12 +125,12 @@ def check_lasers_direction(agent_pos, laser_positions):
     laser_north = laser_south = laser_east = laser_west = 0
     for laser_pos in laser_positions:
         if laser_pos[0] < agent_pos[0] and laser_pos[1] == agent_pos[1]:
-            laser_north = 1
+            laser_north += 1
         elif laser_pos[0] > agent_pos[0] and laser_pos[1] == agent_pos[1]:
-            laser_south = 1
+            laser_south += 1
         elif laser_pos[1] > agent_pos[1] and laser_pos[0] == agent_pos[0]:
-            laser_east = 1
+            laser_east += 1
         elif laser_pos[1] < agent_pos[1] and laser_pos[0] == agent_pos[0]:
-            laser_west = 1
+            laser_west += 1
 
     return laser_north, laser_south, laser_east, laser_west
