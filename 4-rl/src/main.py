@@ -12,7 +12,7 @@ def train_agents(env, agents, n_episodes):
     """ Entraîne les agents sur un nombre donné d'épisodes et renvoie les scores. """
 
     scores = []
-    
+
     for episode in range(n_episodes):
         observation = env.reset()  
         total_reward = 0
@@ -23,17 +23,17 @@ def train_agents(env, agents, n_episodes):
             next_observation, reward, done, truncated, info = env.step(actions)
 
             for agent in agents:
-                agent.update(observation, actions, reward, next_observation, done)
+                agent.update(observation, actions[agent.id], reward, next_observation, done)
 
             total_reward += reward
             observation = next_observation
 
         scores.append(total_reward)
-
+    
         for agent in agents:
-            agent.epsilon_decay(episode, n_episodes)
             
-        print(f"Episode {episode} - Score: {total_reward}")
+            agent.epsilon_decay(episode, n_episodes)
+
     return scores
 
 def execute_actions(env, agents, epsilon = 0):
@@ -47,7 +47,8 @@ def execute_actions(env, agents, epsilon = 0):
         agent.epsilon = epsilon
 
     l_actions = []
-    while not done:
+
+    while not done and step < 25:
         actions = [agent.choose_action(observation) for agent in agents]
         next_observation, reward, done, _, info = env.step(actions)
         l_actions.append(actions)
@@ -55,8 +56,10 @@ def execute_actions(env, agents, epsilon = 0):
         score += reward
         step += 1
         print(f"Step {step} - Score: {score}")
-    
+
     gems = info['gems_collected']
+    if done:
+        print("Done !!!")
     print(f"Step {step} - Score: {score}, Gems: {gems}")
     return l_actions, score, gems
 
@@ -116,8 +119,6 @@ def scores_to_graph(level: int, scores: list[list[float]], args: tuple[float, fl
 
     # Title
     title = f"Level {level} : Mean Score per Episode\n"
-    # Add greec letters to the title
-    #title += f"α={args[0]}, γ={args[1]}, ε₀={args[2]}"
     plt.title(title)
     plt.xlabel("Episode")
     plt.ylabel("Score")
@@ -125,37 +126,51 @@ def scores_to_graph(level: int, scores: list[list[float]], args: tuple[float, fl
     plt.show()
     plt.clf()
 
-def plot_scores(scores, window_size=100):
-    # Convertir la liste de listes en tableau numpy pour faciliter les calculs
-    scores_array = np.array(scores)
-    episodes = np.arange(scores_array.shape[1])
-    
-    # Calcul de la moyenne et de la déviation standard pour chaque épisode
-    mean_scores = np.mean(scores_array, axis=0)
-    std_scores = np.std(scores_array, axis=0)
+def plot_scores(scores1, scores2,level, window_size=100):
+    # Convertir les listes de listes en tableaux numpy
+    scores_array1 = np.array(scores1)
+    scores_array2 = np.array(scores2)
+    episodes = np.arange(1, scores_array1.shape[1] + 1)
 
-    # Calcul de la moyenne et de la déviation standard sur la fenêtre glissante
-    mean_scores_window = np.convolve(mean_scores, np.ones(window_size)/window_size, mode='valid')
-    std_scores_window = np.convolve(std_scores, np.ones(window_size)/window_size, mode='valid')
+    # Calcul de la moyenne et de la déviation standard pour chaque ensemble de scores
+    mean_scores1 = np.mean(scores_array1, axis=0)
+    std_scores1 = np.std(scores_array1, axis=0)
+    mean_scores_window1 = np.convolve(mean_scores1, np.ones(window_size)/window_size, mode='valid')
+    std_scores_window1 = np.convolve(std_scores1, np.ones(window_size)/window_size, mode='valid')
 
-    # Tracer le graphique
-    plt.figure(figsize=(12, 6))
-    plt.plot(episodes[:len(mean_scores_window)], mean_scores_window, label='Moyenne des scores')
-    plt.fill_between(episodes[:len(mean_scores_window)], 
-                     mean_scores_window - std_scores_window, 
-                     mean_scores_window + std_scores_window, 
-                     color='gray', alpha=0.2, label='Déviation standard')
-    
-    plt.title('Score Moyen par Épisode')
+    mean_scores2 = np.mean(scores_array2, axis=0)
+    std_scores2 = np.std(scores_array2, axis=0)
+    mean_scores_window2 = np.convolve(mean_scores2, np.ones(window_size)/window_size, mode='valid')
+    std_scores_window2 = np.convolve(std_scores2, np.ones(window_size)/window_size, mode='valid')
+
+    # Tracer les graphiques pour les deux ensembles de scores
+    plt.figure(figsize=(8, 5))
+    plt.plot(episodes[:len(mean_scores_window1)], mean_scores_window1, label='Q-Learning Tabulaire - Moyenne des scores')
+    plt.fill_between(episodes[:len(mean_scores_window1)], 
+                     mean_scores_window1 - std_scores_window1, 
+                     mean_scores_window1 + std_scores_window1, 
+                     color='C0', alpha=0.2)
+
+    plt.plot(episodes[:len(mean_scores_window2)], mean_scores_window2, label='Q-Learning Approximatif - Moyenne des scores', color='C1')
+    plt.fill_between(episodes[:len(mean_scores_window2)], 
+                     mean_scores_window2 - std_scores_window2, 
+                     mean_scores_window2 + std_scores_window2, 
+                     color='C1', alpha=0.2)
+
+    # Ajout du titre et des légendes
+    plt.title(f'Score Moyen par Épisode - Niveau {level}')
     plt.xlabel('Épisodes')
     plt.ylabel('Score Moyen')
-    plt.legend()
+    # en bas a droite
+    plt.legend(fontsize='medium', loc='lower right', framealpha=0.8)
     plt.grid()
     plt.show()
 
 
+
+
 if __name__ == "__main__":
-    level = 1
+    level = 6
     
     if level == 1:
         level_name = "level1"
@@ -167,29 +182,31 @@ if __name__ == "__main__":
     # Paramètres d'entraînement
 
     n_episodes = 3000
-    n_trainings = 1
-    level_scores = []
+    n_trainings = 10
+    lscores_qlearning = []
+    lscores_aql = []
     # Entraînement
     env = TimeLimit(LLE.level(level, ObservationType.LAYERED), 80)
-    
-    print(f'Entraînement sur le niveau {level_name}')
-    for training in range(n_trainings):
-        agents = [QLearning(id, alpha=0.1, gamma=0.9, epsilon=1.0) for id in range(env.n_agents)]
-        agents = [ApproximateQLearning(id, n_features=15, alpha=0.01, gamma=0.9 , epsilon=1.0, n_actions=5) for id in range(env.n_agents)]
-        scores = train_agents(env, agents, n_episodes)
-        print(f"Score moyen: {np.mean(scores)} de {n_episodes} épisodes de l'entraînement {training} ")
-        level_scores.append(scores)
-    print("Entraînement terminé!")
-    plot_scores(level_scores,level)
-    exit()
-    l_actions, total_score, total_gems = execute_actions(env, agents, epsilon=0)
-   
-    
-    
-    #scores_to_graph(level, level_scores, (0.1, 0.7, 0.1), min_val=0, max_val=3)
-    #
-    # l_actions, total_score, total_gems = execute_actions(env, agents, epsilon=0)
-    # visualize_actions(level_name, l_actions)
+    try:
+        print(f'Entraînement sur le niveau {level_name}')
+        for training in range(n_trainings):
+            agents_qlearning = [QLearning(id, alpha=0.1, gamma=0.9, epsilon=1.0) for id in range(env.n_agents)]
+            agents_aql = [ApproximateQLearning(id, n_features=18, alpha=0.1, gamma=0.9 , epsilon=1.0, n_actions=5) for id in range(env.n_agents)]
+            scores_qlearning = train_agents(env, agents_qlearning, n_episodes)
+            scores_aql = train_agents(env, agents_aql, n_episodes)
+            print(f"Score moyen: {np.mean(scores_qlearning)} de {n_episodes} épisodes de l'entraînement {training} avec Q-Learning ")
+            print(f"Score moyen: {np.mean(scores_aql)} de {n_episodes} épisodes de l'entraînement {training} avec Approximate Q-Learning ")
+            lscores_qlearning.append(scores_qlearning)
+            lscores_aql.append(scores_aql)
+        print("Entraînement terminé!")
+        plot_scores(lscores_qlearning, lscores_aql, level)
+        #l_actions, total_score, total_gems = execute_actions(env, agents, epsilon=0)
+        #scores_to_graph(level, level_scores, (0.1, 0.7, 0.1), min_val=0, max_val=3)
+        #l_actions, total_score, total_gems = execute_actions(env, agents, epsilon=0)
+        #visualize_actions(level_name, l_actions)
+    except KeyboardInterrupt:
+        print("Interruption par l'utilisateur")
+        exit(0)
     
 
 

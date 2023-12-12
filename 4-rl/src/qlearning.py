@@ -13,20 +13,6 @@ class QLearning:
         self.n_actions = n_actions # Nombre d'actions possibles
         self.id = id
     
-    def _get_state_key(self, state) -> int:
-        """ Retourne la clé de l'état """
-        return hash(state.tobytes())
-
-    def _initialize_state(self, state_key):
-        """ Initialise l'état dans la table Q """
-        if state_key not in self.q_table:
-            self.q_table[state_key] = np.ones(self.n_actions)
-
-    def _get_available_actions_indices(self, observation) -> np.array:
-        """ Retourne les indices des actions disponibles """
-        available_actions = observation.available_actions[self.id]
-        return np.where(available_actions > 0)[0]
-
     def choose_action(self, observation: Observation) -> int:
         """ Choix d'une action """
         state_key = self._get_state_key(observation.state)
@@ -48,6 +34,24 @@ class QLearning:
         
         self.q_table[state_key][action] = self._calculate_new_value(old_value, reward, next_max, done)
 
+    def epsilon_decay(self, episode, n_episodes):
+        """ Décroissance non linéaire de l'epsilon. """
+        self.epsilon = max(0.0, 1 / (1 + np.exp(0.001 * (episode - n_episodes /2 ))))
+        
+    def _get_state_key(self, state) -> int:
+        """ Retourne la clé de l'état """
+        return hash(state.tobytes())
+
+    def _initialize_state(self, state_key):
+        """ Initialise l'état dans la table Q """
+        if state_key not in self.q_table:
+            self.q_table[state_key] = np.ones(self.n_actions)
+
+    def _get_available_actions_indices(self, observation) -> np.array:
+        """ Retourne les indices des actions disponibles """
+        available_actions = observation.available_actions[self.id]
+        return np.where(available_actions > 0)[0]
+
     def _should_explore(self) -> bool: 
         """ Vérifie si l'agent doit explorer """
         return random.uniform(0, 1) < self.epsilon
@@ -68,6 +72,4 @@ class QLearning:
         """ Calcule la nouvelle valeur Q avec la formule de Bellman """
         return (1 - self.alpha) * old_value + self.alpha * (reward + self.gamma * next_max * (1-done)) 
     
-    def epsilon_decay(self, episode, n_episodes):
-        """ Décroissance non linéaire de l'epsilon. """
-        self.epsilon = max(0.0, 1 / (1 + np.exp(0.001 * (episode - n_episodes /2 ))))
+    
