@@ -2,19 +2,13 @@ from lle import LLE, World, Action, ObservationType
 from rlenv.wrappers import TimeLimit
 from qlearning import QLearning 
 from approximate_qlearning import ApproximateQLearning
-import cv2
-import matplotlib.pyplot as plt
 import numpy as np
-
-
+import matplotlib.pyplot as plt
 
 def train_agents(env, agents, n_episodes):
-    """ Entraîne les agents sur un nombre donné d'épisodes et renvoie les scores. """
-
     scores = []
-
     for episode in range(n_episodes):
-        observation = env.reset()  
+        observation = env.reset()
         total_reward = 0
         done, truncated = False, False
 
@@ -29,20 +23,14 @@ def train_agents(env, agents, n_episodes):
             observation = next_observation
 
         scores.append(total_reward)
-    
         for agent in agents:
-            
             agent.epsilon_decay(episode, n_episodes)
 
     return scores
 
-def execute_actions(env, agents, epsilon = 0):
+def execute_actions(env, agents, epsilon=0):
     observation = env.reset()
-    done  = False
-    score = 0
-    step = 0
-
-    # Ajuster epsilon pour chaque agent
+    done, score, step = False, 0, 0
     for agent in agents:
         agent.epsilon = epsilon
 
@@ -57,74 +45,12 @@ def execute_actions(env, agents, epsilon = 0):
         step += 1
         print(f"Step {step} - Score: {score}")
 
-    gems = info['gems_collected']
-    if done:
-        print("Done !!!")
+    gems = info.get('gems_collected', 0)
     print(f"Step {step} - Score: {score}, Gems: {gems}")
     return l_actions, score, gems
 
-def visualize_actions(level_file: str, l_actions: list[list[int]]):
-
-    # Dictionnaire pour mapper les entiers aux objets Action correspondants.
-    action_mapping = {
-        0: Action.NORTH,
-        1: Action.SOUTH,
-        2: Action.EAST,
-        3: Action.WEST,
-        4: Action.STAY,
-    }
-
-    # Initialisation de l'état du monde à partir du fichier de niveau.
-    w = World.from_file(level_file)
-    w.reset()
-
-    for actions_list in l_actions:
-        for action_number in actions_list:
-            # Convertir le numéro d'action en objet Action correspondant et le placer dans une liste.
-            action_sequence = [action_mapping[action_number]]  # Création d'une liste d'actions
-            w.step(action_sequence)
-            img = w.get_image()
-            cv2.imshow("Visualization", img)
-            # Attendre que l'utilisateur appuie sur une touche pour passer à l'étape suivante.
-            key = cv2.waitKey(500)
-
-    # Attendre 1 seconde et fermer la fenêtre.
-    cv2.waitKey(1000)
-    cv2.destroyAllWindows()
-
-def scores_to_graph(level: int, scores: list[list[float]], args: tuple[float, float, float], min_val: int = 0, max_val: int = 1):
-    """
-    Plot the scores of the training episodes and save the graph as a png file
-    """
-
-    # Get the mean of the scores
-    y = np.mean(scores, axis=0)
-    std_scores = np.std(scores, axis=0)
-
-    x = [*range(1, len(y) + 1)]
-
-    # Plot the scores
-    plt.scatter(x, y, s=0.5, color="blue", label="Mean Score")
-
-    # Plot the standard deviation
-    plt.fill_between(x, y - std_scores, y + std_scores, color="grey", alpha=0.2, label="Standard Deviation")
-
-    # Plot the mean of the scores
-    # y_window = np.convolve(y, np.ones(50) / 50, "valid")
-    # plt.plot(x[: len(y_window)], y_window, color="red", label="Mean Score")
-
-    # Plot the max and min values
-    plt.axhline(y=max_val, color="green", linestyle="--", label=f"Optimal Score = {max_val}")
-    plt.axhline(y=min_val, color="green", linestyle="--", label=f"Pessimistic Score = {min_val}")
-
-    # Title
-    title = f"Level {level} : Mean Score per Episode\n"
-    plt.title(title)
-    plt.xlabel("Episode")
-    plt.ylabel("Score")
-    plt.legend()
-    plt.show()
-    plt.clf()
+def initialize_agents(env, AgentClass, n_agents, **kwargs):
+    return [AgentClass(id, **kwargs) for id in range(n_agents)]
 
 def plot_scores(scores1, scores2,level, window_size=100):
     # Convertir les listes de listes en tableaux numpy
@@ -167,46 +93,28 @@ def plot_scores(scores1, scores2,level, window_size=100):
     plt.show()
 
 
-
-
 if __name__ == "__main__":
-    level = 6
-    
-    if level == 1:
-        level_name = "level1"
-    elif level == 3:
-        level_name = "level3"
-    elif level == 6:
-        level_name = "level6"
-        
-    # Paramètres d'entraînement
-
+    level = 1
     n_episodes = 3000
-    n_trainings = 10
-    lscores_qlearning = []
-    lscores_aql = []
-    # Entraînement
+    n_trainings = 3
+    lscores_qlearning, lscores_aql = [], []
+    alpha, gamma, epsilon = 0.1, 0.9, 1.0
+
     env = TimeLimit(LLE.level(level, ObservationType.LAYERED), 80)
-    try:
-        print(f'Entraînement sur le niveau {level_name}')
-        for training in range(n_trainings):
-            agents_qlearning = [QLearning(id, alpha=0.1, gamma=0.9, epsilon=1.0) for id in range(env.n_agents)]
-            agents_aql = [ApproximateQLearning(id, n_features=18, alpha=0.1, gamma=0.9 , epsilon=1.0, n_actions=5) for id in range(env.n_agents)]
-            scores_qlearning = train_agents(env, agents_qlearning, n_episodes)
-            scores_aql = train_agents(env, agents_aql, n_episodes)
-            print(f"Score moyen: {np.mean(scores_qlearning)} de {n_episodes} épisodes de l'entraînement {training} avec Q-Learning ")
-            print(f"Score moyen: {np.mean(scores_aql)} de {n_episodes} épisodes de l'entraînement {training} avec Approximate Q-Learning ")
-            lscores_qlearning.append(scores_qlearning)
-            lscores_aql.append(scores_aql)
-        print("Entraînement terminé!")
-        plot_scores(lscores_qlearning, lscores_aql, level)
-        #l_actions, total_score, total_gems = execute_actions(env, agents, epsilon=0)
-        #scores_to_graph(level, level_scores, (0.1, 0.7, 0.1), min_val=0, max_val=3)
-        #l_actions, total_score, total_gems = execute_actions(env, agents, epsilon=0)
-        #visualize_actions(level_name, l_actions)
-    except KeyboardInterrupt:
-        print("Interruption par l'utilisateur")
-        exit(0)
     
+    print(f'Entraînement sur le niveau {level}')
 
+    for training in range(n_trainings):
+        agents_qlearning = initialize_agents(env, QLearning, env.n_agents, alpha=alpha, gamma=gamma, epsilon=epsilon)
+        agents_aql = initialize_agents(env, ApproximateQLearning, env.n_agents, n_features=14, alpha=alpha, gamma=gamma, epsilon=epsilon, n_actions=5)
 
+        scores_qlearning = train_agents(env, agents_qlearning, n_episodes)
+        scores_aql = train_agents(env, agents_aql, n_episodes)
+
+        print(f"Entraînement {training}: Score moyen Q-Learning {np.mean(scores_qlearning)}, Approximate Q-Learning {np.mean(scores_aql)}")
+        lscores_qlearning.append(scores_qlearning)
+        lscores_aql.append(scores_aql)
+
+    print("Entraînement terminé!")
+    plot_scores(lscores_qlearning, lscores_aql, level)
+    #execute_actions(env, agents_aql, epsilon=0)

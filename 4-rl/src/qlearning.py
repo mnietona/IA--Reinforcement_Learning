@@ -1,4 +1,4 @@
-from rlenv import RLEnv, Observation
+from rlenv import Observation
 import numpy as np
 import random
 
@@ -35,8 +35,9 @@ class QLearning:
         self.q_table[state_key][action] = self._calculate_new_value(old_value, reward, next_max, done)
 
     def epsilon_decay(self, episode, n_episodes):
-        """ Décroissance non linéaire de l'epsilon. """
-        self.epsilon = max(0.0, 1 / (1 + np.exp(0.001 * (episode - n_episodes /2 ))))
+        """ Décroissance de l'epsilon. """
+        
+        self.epsilon = max(0.0 , 1 / (1 + np.exp(0.001 * (episode - n_episodes /2 )))) # Formule proposée par ChatGpt pour une décroissance de l'epsilon
         
     def _get_state_key(self, state) -> int:
         """ Retourne la clé de l'état """
