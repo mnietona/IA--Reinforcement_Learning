@@ -3,8 +3,11 @@ from dataclasses import dataclass
 @dataclass
 class Parameters:
     reward_live: float
+    """Reward for living at each time step"""
     gamma: float
+    """Discount factor"""
     noise: float
+    """Probability of taking a random action instead of the chosen one"""
 
 def prefer_close_exit_following_the_cliff() -> Parameters:
     # Préférer la sortie proche (+1) en longeant la falaise.

@@ -36,18 +36,17 @@ def execute_actions(env, agents, epsilon=0):
 
     l_actions = []
 
-    while not done and step < 25:
+    while not done and step < 25:  # < 25 car level 1 et 3 pour level 6 retirer
         actions = [agent.choose_action(observation) for agent in agents]
         next_observation, reward, done, _, info = env.step(actions)
         l_actions.append(actions)
         observation = next_observation
         score += reward
         step += 1
-        print(f"Step {step} - Score: {score}")
 
     gems = info.get('gems_collected', 0)
+    print(f"Actions: {l_actions}")
     print(f"Step {step} - Score: {score}, Gems: {gems}")
-    return l_actions, score, gems
 
 def initialize_agents(env, AgentClass, n_agents, **kwargs):
     return [AgentClass(id, **kwargs) for id in range(n_agents)]
@@ -96,7 +95,7 @@ def plot_scores(scores1, scores2,level, window_size=100):
 if __name__ == "__main__":
     level = 1
     n_episodes = 3000
-    n_trainings = 3
+    n_trainings = 10
     lscores_qlearning, lscores_aql = [], []
     alpha, gamma, epsilon = 0.1, 0.9, 1.0
 
