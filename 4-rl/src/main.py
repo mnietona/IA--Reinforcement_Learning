@@ -1,4 +1,4 @@
-from lle import LLE, World, Action, ObservationType
+from lle import LLE, ObservationType
 from rlenv.wrappers import TimeLimit
 from qlearning import QLearning 
 from approximate_qlearning import ApproximateQLearning
